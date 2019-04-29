@@ -42,7 +42,9 @@ def map_3d_to_2d(J3d, gt2d, gt3d):
     ### ii. scaling: not necessary here.
     
     ### iii. rotation
+    ### batch_svd is hard to use, just try svd
     M = torch.bmm(G3d.transpose(1,2), J3d) # [N, 3, 3]
+    '''
     if platform == 'linux':
         U, D, V = batch_svd(M)
         R = torch.bmm(V, U.transpose(1,2))
@@ -52,6 +54,12 @@ def map_3d_to_2d(J3d, gt2d, gt3d):
             U, D, V = torch.svd(M[i])
             R[i] = torch.mm(V, U.transpose(0,1)) # transpose
         R = torch.stack(R, dim=0)
+    '''
+    R = [None] * batch_size
+    for i in range(batch_size):
+        U, D, V = torch.svd(M[i])
+        R[i] = torch.mm(V, U.transpose(0, 1))  # transpose
+    R = torch.stack(R, dim=0)
         
     reg3d = torch.bmm(J3d, R)
     ### eval stage I: rel error < 5%

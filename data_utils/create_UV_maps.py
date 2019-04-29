@@ -1,6 +1,9 @@
+import sys
+sys.path.append('..')
+
 from smpl_torch_batch import SMPLModel
 import numpy as np
-import pickle 
+import pickle
 import h5py
 import torch
 from torch.nn import Module
@@ -21,7 +24,7 @@ class Human36MWashedDataset(Dataset):
             annotation='h36m.pickle', calc_mesh=False):
         super(Human36MWashedDataset, self).__init__()
         if root_dir is None:            
-            root_dir = '/backup1/lingboyang/data/human36m_washed' \
+            root_dir = '/home/wzeng/mydata/h3.6m/images_washed' \
                 if platform == 'linux' \
                 else 'D:/data/human36m_washed'
             
@@ -69,9 +72,10 @@ class Human36MWashedDataset(Dataset):
         if self.calc_mesh:
             _trans = torch.zeros((out_dict['pose'].shape[0], 3), 
                 dtype=self.dtype, device=self.device)
-            meshes, lsp_joints = self.smpl(out_dict['shape'], out_dict['pose'], _trans)
+            meshes, coco_joints = self.smpl(out_dict['shape'], out_dict['pose'], _trans)
             out_dict['meshes'] = meshes
-            out_dict['lsp_joints'] = lsp_joints
+            out_dict['lsp_joints'] = coco_joints[:, :14, :]
+            out_dict['coco_joints'] = coco_joints
         
         return out_dict
         
@@ -99,10 +103,10 @@ def visualize(folder, imagenames, mesh_2d, joints_2d, root=None):
         i += 1
 
     
-def create_UV_maps(UV_label_root=None, uv_prefix = 'radvani_template'):
+def create_UV_maps(UV_label_root=None, uv_prefix='smpl_fbx_template'):
     if platform == 'linux':
-        os.environ['CUDA_VISIBLE_DEVICES'] = '1'
-    
+        os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+
     data_type = torch.float32
     device=torch.device('cuda')
     pose_size = 72
@@ -114,7 +118,7 @@ def create_UV_maps(UV_label_root=None, uv_prefix = 'radvani_template'):
             model_path = './model_lsp.pkl',
             data_type=data_type,
         )
-    dataset = Human36MWashedDataset(model, calc_mesh=True)
+    dataset = Human36MWashedDataset(model, calc_mesh=True, root_dir='/home/wzeng/mydata/h3.6m/images_washed')
     
     generator = UV_Map_Generator(
         UV_height=256,
@@ -198,7 +202,7 @@ if __name__ == '__main__':
     # Please make sure the prefix is the same as in train.py opt.uv_prefix
     # prefix = 'radvani_template'
     # prefix = 'vbml_close_template'
-    prefix = 'vbml_spaced_template'
+    prefix = 'smpl_fbx_template'
     create_UV_maps(uv_prefix=prefix)
     # create_UV_maps(uv_prefix='radvani_new_template')
     # create_UV_maps(uv_prefix='smpl_fbx_template')

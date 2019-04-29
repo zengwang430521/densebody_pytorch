@@ -419,14 +419,16 @@ class UV_Map_Generator():
 if __name__ == '__main__':
     # test render module
     # change this to the same as in train.py opt.uv_prefix
-    file_prefix = 'radvani_template'
+    #file_prefix = 'radvani_template'
     #file_prefix = 'vbml_close_template'
     #file_prefix = 'vbml_spaced_template'
+    file_prefix = 'smpl_fbx_template'
+
     generator = UV_Map_Generator(
         UV_height=256,
         UV_pickle=file_prefix+'.pickle'
     )
-    test_folder = '_test_radvani'
+    test_folder = '_test_smpl_fbx'
     if not os.path.isdir(test_folder):
         os.makedirs(test_folder)
         

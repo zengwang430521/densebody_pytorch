@@ -39,6 +39,7 @@ class DataWasher():
         smpl_joint
         width
         '''
+        temp = fin.keys()
         for k in fin.keys():
             data = fin[k][:max_item]
             if k.startswith('gt'):  # reshape coords
@@ -187,7 +188,7 @@ class DataWasher():
         
 if __name__ == '__main__':
     np.random.seed(9608)
-    root_dir = None  # Change this to your human36m dataset path
-    datawasher = DataWasher(root_dir=root_dir)
+    root_dir = '/home/wzeng/mydata/h3.6m/images'     # Change this to your human36m dataset path
+    datawasher = DataWasher(root_dir=root_dir, annotation='annot.h5')
     datawasher._strip_non_square_images()
     datawasher.data_augmentation()
