@@ -16,14 +16,15 @@ def TrainOptions(debug=False):
     # dataset options    
     # platform specific options
     windows_root = 'D:/data' 
-    linux_root = '/backup1/lingboyang/data'  # change to you dir
+    linux_root = '/home/wzeng/mydata/h3.6m'  # change to you dir
     data_root = linux_root if platform == 'linux' else windows_root
     num_threads = 4 if platform == 'linux' else 0
     batch_size = 8 if platform == 'linux' else 4
+    folder_name = 'images'
     
     parser.add_argument('--data_root', type=str, default=data_root)
-    parser.add_argument('--checkpoints_dir', type=str, default='checkpoints')
-    parser.add_argument('--dataset', type=str, default='human36m',
+    parser.add_argument('--checkpoints_dir', type=str, default='../checkpoints')
+    parser.add_argument('--dataset', type=str, default=folder_name,        # the name of the folder
         choices=['human36m', 'surreal', 'up3d'])
     parser.add_argument('--max_dataset_size', type=int, default=-1)
     parser.add_argument('--im_size', type=int, default=256)
@@ -87,7 +88,7 @@ if __name__ == '__main__':
     
     np.random.seed(9608)    
     opt = TrainOptions(debug=False)
-    dataset = DenseBodyDataset(data_root=opt.data_root, uv_map=opt.uv_map, max_size=opt.max_dataset_size)
+    dataset = DenseBodyDataset(data_root=opt.data_root, uv_map=opt.uv_map, max_size=opt.max_dataset_size, dataset_name=opt.dataset)
     batchs_per_epoch = len(dataset) // opt.batch_size # drop last batch
     print('#training images = %d' % len(dataset))
 
