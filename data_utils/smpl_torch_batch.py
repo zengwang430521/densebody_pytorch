@@ -36,10 +36,13 @@ class SMPLModel(Module):
     self.device = device if device is not None else torch.device('cpu')
     
     self.visualize_model_parameters()
+    '''
     for name in ['J_regressor', 'joint_regressor', 'weights', 'posedirs', 'v_template', 'shapedirs']:
       _tensor = getattr(self, name)
       print(' Tensor {} shape: '.format(name), _tensor.shape)
       setattr(self, name, _tensor.to(device))
+    '''
+    print('smpl model loaded.')
 
   @staticmethod
   def rodrigues(r):

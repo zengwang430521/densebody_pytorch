@@ -16,21 +16,22 @@ def TestOptions(debug=False):
     
     # dataset options    
     # platform specific options
-    windows_root = 'D:/data' 
-    linux_root = '/backup1/lingboyang/data'  # change to you dir
+    windows_root = 'D:/data'
+    linux_root = '/home/wzeng/mydata/h3.6m'  # change to you dir
     data_root = linux_root if platform == 'linux' else windows_root
     num_threads = 0
     batch_size = 1
-    
+    folder_name = 'images'
+
     parser.add_argument('--data_root', type=str, default=data_root)
-    parser.add_argument('--checkpoints_dir', type=str, default='checkpoints')
-    parser.add_argument('--dataset', type=str, default='human36m',
-        choices=['human36m', 'surreal', 'up3d', 'nturgbd'])
-    parser.add_argument('--max_dataset_size', type=int, default=-1)
+    parser.add_argument('--checkpoints_dir', type=str, default='../checkpoints')
+    parser.add_argument('--dataset', type=str, default=folder_name,        # the name of the folder
+                        choices=['human36m', 'surreal', 'up3d'])
+    parser.add_argument('--max_dataset_size', type=int, default=100)
     parser.add_argument('--im_size', type=int, default=256)
     parser.add_argument('--batch_size', type=int, default=batch_size)
     parser.add_argument('--name', type=str, default='densebody_resnet_h36m')
-    parser.add_argument('--uv_map', type=str, default='radvani', choices=['radvani', 'vbml_close', 'vbml_spaced', 'smpl_fbx'])
+    parser.add_argument('--uv_map', type=str, default='smpl_fbx', choices=['radvani', 'vbml_close', 'vbml_spaced', 'smpl_fbx'])
     parser.add_argument('--num_threads', default=num_threads, type=int, help='# sthreads for loading data')
     
     # model options
@@ -48,7 +49,7 @@ def TestOptions(debug=False):
     parser.add_argument('--results_dir', type=str, default='results')
     parser.add_argument('--phase', type=str, default='test', choices=['test', 'in_the_wild'])
     parser.add_argument('--continue_train', action='store_true')
-    parser.add_argument('--load_epoch', type=int, default=0)
+    parser.add_argument('--load_epoch', type=int, default=15)
     
     opt = parser.parse_args()
     
@@ -61,7 +62,7 @@ if __name__ == '__main__':
     # Change this to your gpu id.
     # The program is fixed to run on a single GPU
     if platform == 'linux':
-        os.environ['CUDA_VISIBLE_DEVICES'] = '2'
+        os.environ['CUDA_VISIBLE_DEVICES'] = '0'
     
     opt = TestOptions(debug=False)
     dataset = DenseBodyDataset(data_root=opt.data_root, dataset_name=opt.dataset, 

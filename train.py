@@ -83,8 +83,6 @@ def TrainOptions(debug=False):
 if __name__ == '__main__':
     # Change this to your gpu id.
     # The program is fixed to run on a single GPU
-    if platform == 'linux':
-        os.environ['CUDA_VISIBLE_DEVICES'] = '0'
     
     np.random.seed(9608)    
     opt = TrainOptions(debug=False)
