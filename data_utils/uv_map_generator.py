@@ -375,7 +375,8 @@ class UV_Map_Generator():
         # normalize all to [0,1]
         _min = np.amin(verts, axis=0, keepdims=True)
         _max = np.amax(verts, axis=0, keepdims=True)
-        verts = (verts - _min) / (_max - _min)
+        verts = (verts - _min) / (_max - _min)          # normalize verts. Is this very important?
+
         verts_backup = verts.copy()
         
         vt_to_v_index = np.array([
@@ -405,6 +406,7 @@ class UV_Map_Generator():
             for coord in coords:
                 if UV_map[coord[0], coord[1]].max() > 0:
                     vt_3d[i] = UV_map[coord[0], coord[1]]
+                    # temp = UV_map[coord[0], coord[1]]
                     
         vt_3d = np.stack(vt_3d)
         # convert vt back to v (requires v_to_vt index)

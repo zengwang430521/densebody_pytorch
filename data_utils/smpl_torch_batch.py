@@ -11,20 +11,23 @@ class SMPLModel(Module):
     super(SMPLModel, self).__init__()
     self.data_type = data_type
     self.simplify = simplify
+    device = device if device is not None else torch.device('cpu')
+    self.device = device
+
     with open(model_path, 'rb') as f:
       params = pickle.load(f)
     #print(params['J_regressor'].nonzero())
     self.J_regressor = torch.from_numpy(
       np.array(params['J_regressor'].todense())
-    ).type(self.data_type)
+    ).type(self.data_type).to(device)
     # 20190330: lsp 14 joint regressor
     self.joint_regressor = torch.from_numpy(
       np.array(params['joint_regressor'].T.todense())
-    ).type(self.data_type)
-    self.weights = torch.from_numpy(params['weights']).type(self.data_type)
-    self.posedirs = torch.from_numpy(params['posedirs']).type(self.data_type)
-    self.v_template = torch.from_numpy(params['v_template']).type(self.data_type)
-    self.shapedirs = torch.from_numpy(params['shapedirs']).type(self.data_type)
+    ).type(self.data_type).to(device)
+    self.weights = torch.from_numpy(params['weights']).type(self.data_type).to(device)
+    self.posedirs = torch.from_numpy(params['posedirs']).type(self.data_type).to(device)
+    self.v_template = torch.from_numpy(params['v_template']).type(self.data_type).to(device)
+    self.shapedirs = torch.from_numpy(params['shapedirs']).type(self.data_type).to(device)
     self.kintree_table = params['kintree_table']
     id_to_col = {self.kintree_table[1, i]: i
                  for i in range(self.kintree_table.shape[1])}
@@ -33,8 +36,7 @@ class SMPLModel(Module):
       for i in range(1, self.kintree_table.shape[1])
     }
     self.faces = params['f']
-    self.device = device if device is not None else torch.device('cpu')
-    
+
     self.visualize_model_parameters()
     '''
     for name in ['J_regressor', 'joint_regressor', 'weights', 'posedirs', 'v_template', 'shapedirs']:
@@ -182,9 +184,7 @@ class SMPLModel(Module):
         
     lRs = torch.stack(lRs, dim=1)
     return self._lR2G(lRs, J)
-        
-  
-  
+
   def forward(self, betas, thetas, trans, gR=None):
     
     """

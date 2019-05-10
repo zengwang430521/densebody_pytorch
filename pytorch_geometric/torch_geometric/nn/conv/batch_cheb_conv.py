@@ -3,6 +3,7 @@ from torch.nn import Parameter
 from torch_sparse import spmm
 from torch_scatter import scatter_add
 from torch_geometric.utils import remove_self_loops
+import numpy as np
 
 from ..inits import uniform
 
@@ -13,15 +14,16 @@ class FixBatchChebConv(torch.nn.Module):
     edge_index should be bidirectional： if node 0 and 1 is linked, then both (0,1) and (1,0) should appear in edge_index
     """
 
-    def __init__(self, in_channels, out_channels, K, num_nodes, edge_index, edge_weight=None, bias=True):
+    def __init__(self, in_channels, out_channels, K, num_nodes, edge_index, edge_weight=None, bias=True, device=None):
         super(FixBatchChebConv, self).__init__()
-
+        device = device if device is not None else torch.device('cpu')
+        self.device = device
         self.in_channels = in_channels
         self.out_channels = out_channels
-        self.weight = Parameter(torch.Tensor(K, in_channels, out_channels))
+        self.weight = Parameter(torch.Tensor(K, in_channels, out_channels)).to(device)
 
         if bias:
-            self.bias = Parameter(torch.Tensor(out_channels))
+            self.bias = Parameter(torch.Tensor(out_channels)).to(device)
         else:
             self.register_parameter('bias', None)
 
@@ -45,8 +47,8 @@ class FixBatchChebConv(torch.nn.Module):
         deg[deg == float('inf')] = 0
         lap = -deg[row] * edge_weight * deg[col]
         self.K = K
-        self.lap = lap
-        self.edge_index = edge_index
+        self.lap = lap.to(device)
+        self.edge_index = edge_index.to(device)
         self.num_nodes = num_nodes
 
     def reset_parameters(self):
@@ -102,22 +104,26 @@ class Upsample(torch.nn.Module):
         return x
 
 
-def perm_data_back(x, indices):
-    """
-    Permute data matrix, i.e. exchange node ids,
-    form the clustering tree to original one
-    """
-    if indices is None:
-        return x
+def adj2edge(adj):
+    edge = adj.nonzero()
+    edge = torch.from_numpy(np.stack(edge))
+    return edge.long()
 
-    N, M = x.shape
-    xnew = np.empty((N, M))
-    for i, j in enumerate(indices):
-        # Existing vertex, i.e. real data.
-        if j < M:
-            xnew[:, j] = x[:, i]
-    return xnew
 
+def face2adj(faces, vertex_num):
+    # get the adj matrix in V * V
+    max_node = -1
+    for face in faces:
+        max_node = max(max_node, max(face))
+    offset = -1 if max_node >= vertex_num else 0
+
+    adj = torch.zeros(vertex_num, vertex_num)
+    for face in faces:
+        for i in range(len(face)):
+            j = (i + 1) % len(face)
+            adj[face[i] + offset, face[j] + offset] = 1
+            adj[face[j] + offset, face[i] + offset] = 1
+    return adj
 
 # change the index
 def perm_data(x, indices):
@@ -128,18 +134,6 @@ def perm_data(x, indices):
     if indices is None:
         return x
 
-
-    N, M = x.shape
-    Mnew = len(indices)
-    assert Mnew >= M
-    xnew = np.empty((N, Mnew))
-    for i, j in enumerate(indices):
-        # Existing vertex, i.e. real data.
-        if j < M:
-            xnew[:,i] = x[:,j]
-        # Fake vertex because of singeltons.
-        # They will stay 0 so that max pooling chooses the singelton.
-        # Or -infty ?
-        else:
-            xnew[:,i] = np.zeros(N)
-    return xnew
+    x = torch.cat((x, x.new_zeros([x.shape[0], indices.shape[0] - x.shape[1], x.shape[2]])), dim=1)
+    y = x[:, indices, :]
+    return y
