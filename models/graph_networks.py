@@ -138,6 +138,7 @@ class ChebGcnDecoder(nn.Module):
 
             layers.append(BCGN.FixBatchChebConv(in_channels=in_channels, out_channels=out_channels, K=3,
                                                 num_nodes=num_nodes, edge_index=edge_index, device=device))
+
             layers.append(get_non_linearity(layer_type=nl))
 
             if i < len(adjs) - 1:
@@ -147,6 +148,9 @@ class ChebGcnDecoder(nn.Module):
                                                     edge_index=edge_index, device=device))
 
         self.conv = nn.Sequential(*layers).to(device)
+        # print(self.conv.state_dict().keys())
+        # print(self.fc.state_dict().keys())
+
 
     def forward(self, x):
         x = self.fc(x)

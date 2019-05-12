@@ -25,6 +25,9 @@ class GCNModel(BaseModel):
                                                      channels=opt.gcn_channels, nz=opt.nz, norm=opt.norm, nl=opt.nl,
                                                      init_type=opt.init_type, device=self.device)
 
+        print(self.decoder.state_dict().keys())
+        params = list(self.decoder.named_parameters())
+
         if opt.phase == 'train':
             self.L1_loss = torch.nn.L1Loss()
             # self.TV_loss = networks.TotalVariationLoss(opt.uv_prefix, self.device)

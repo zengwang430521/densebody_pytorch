@@ -20,10 +20,10 @@ class FixBatchChebConv(torch.nn.Module):
         self.device = device
         self.in_channels = in_channels
         self.out_channels = out_channels
-        self.weight = Parameter(torch.Tensor(K, in_channels, out_channels)).to(device)
+        self.weight = Parameter(torch.Tensor(K, in_channels, out_channels))
 
         if bias:
-            self.bias = Parameter(torch.Tensor(out_channels)).to(device)
+            self.bias = Parameter(torch.Tensor(out_channels))
         else:
             self.register_parameter('bias', None)
 
@@ -50,6 +50,7 @@ class FixBatchChebConv(torch.nn.Module):
         self.lap = lap.to(device)
         self.edge_index = edge_index.to(device)
         self.num_nodes = num_nodes
+
 
     def reset_parameters(self):
         size = self.in_channels * self.weight.size(0)

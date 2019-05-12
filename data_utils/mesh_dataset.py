@@ -44,8 +44,6 @@ IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'bmp', 'tiff']
 '''
 
 
-
-
 class MeshDataset(Dataset):
     def __init__(self, data_root=data_root, image_folder='images_washed',
                  annotation='h36m.pickle', phase='train', train_test_split=0.8, max_size=-1, device=None,

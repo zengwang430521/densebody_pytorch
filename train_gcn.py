@@ -23,7 +23,7 @@ def TrainOptions(debug=False):
     linux_root = '/home/wzeng/mydata/h3.6m'  # change to you dir
     data_root = linux_root if platform == 'linux' else windows_root
     num_threads = 4 if platform == 'linux' else 0
-    batch_size = 24 if platform == 'linux' else 4
+    batch_size = 16 if platform == 'linux' else 4
     folder_name = 'images_washed'
 
 
@@ -67,7 +67,7 @@ def TrainOptions(debug=False):
 
     # optimization options
     parser.add_argument('--beta1', type=float, default=0.5, help='momentum term of adam')
-    parser.add_argument('--lr', type=float, default=0.0001, help='initial learning rate for adam')
+    parser.add_argument('--lr', type=float, default=0.001, help='initial learning rate for adam')
     parser.add_argument('--lr_policy', type=str, default='plateau', choices=['lambda', 'step', 'plateau'])
     parser.add_argument('--lr_decay_iters', type=int, default=100,
                         help='multiply by a gamma every lr_decay_iters iterations')
@@ -98,7 +98,7 @@ if __name__ == '__main__':
 
     np.random.seed(9608)
     opt = TrainOptions(debug=False)
-    dataset = MeshDataset(data_root=opt.data_root, image_folder=opt.image_folder, phase=opt.phase)
+    dataset = MeshDataset(data_root=opt.data_root, image_folder=opt.image_folder, phase=opt.phase, max_size=opt.max_dataset_size,)
     batchs_per_epoch = len(dataset) // opt.batch_size  # drop last batch
     print('#training images = %d' % len(dataset))
 
