@@ -90,10 +90,17 @@ def get_non_linearity(layer_type='relu'):
     return nl_layer
 
 
-def define_decoder(netD, adjs, perm_back, vertex_num, channels, nz, norm='batch', nl='lrelu', init_type='xavier', device=None):
+def define_decoder(netD, paras, channels, nz, norm='batch', nl='lrelu', init_type='xavier', device=None):
     net = None
     if netD == 'cheb-gcn':
+        adjs = paras['adjs'][::-1]
+        perm_back = paras['perm_back']
+        vertex_num = 6890               # this need to be modified
         net = ChebGcnDecoder(adjs, perm_back, vertex_num, channels, nz, norm, nl, device)
+    elif netD == 'coma-gcn':
+        adjs = paras['A'][::-1]
+        up_matrixes = paras['U'][::-1]
+        net = ComaGcnDecoder(adjs, up_matrixes, channels, nz, norm, nl, device)
     else:
         raise NotImplementedError('Decoder model name [%s] is not recognized' % netD)
 
@@ -136,7 +143,9 @@ class ChebGcnDecoder(nn.Module):
             in_channels = channels[i]
             out_channels = channels[i + 1]
 
-            layers.append(BCGN.FixBatchChebConv(in_channels=in_channels, out_channels=out_channels, K=3,
+            layers.append(BCGN.FixBatchChebConv(in_channels=in_channels, out_channels=out_channels, K=6,
+                                                num_nodes=num_nodes, edge_index=edge_index, device=device))
+            layers.append(BCGN.FixBatchChebConv(in_channels=out_channels, out_channels=out_channels, K=6,
                                                 num_nodes=num_nodes, edge_index=edge_index, device=device))
 
             layers.append(get_non_linearity(layer_type=nl))
@@ -144,7 +153,7 @@ class ChebGcnDecoder(nn.Module):
             if i < len(adjs) - 1:
                 layers.append(BCGN.Upsample(scale_factor=2))
             else:
-                layers.append(BCGN.FixBatchChebConv(in_channels=out_channels, out_channels=3, K=3, num_nodes=num_nodes,
+                layers.append(BCGN.FixBatchChebConv(in_channels=out_channels, out_channels=3, K=6, num_nodes=num_nodes,
                                                     edge_index=edge_index, device=device))
 
         self.conv = nn.Sequential(*layers).to(device)
@@ -160,4 +169,52 @@ class ChebGcnDecoder(nn.Module):
         x = x[:, :self.vertex_num, :]
         return x
 
+
+class ComaGcnDecoder(nn.Module):
+    def __init__(self, adjs, up_matrixes, channels, nz,  norm='batch', nl='lrelu', device=None):
+
+        super(ComaGcnDecoder, self).__init__()
+        assert (len(adjs) + 1) == len(channels)
+        device = device if device is not None else torch.device('cpu')
+        self.device = device
+        self.graph_size = [adj.shape[0] for adj in adjs]
+        self.channels = channels
+
+        fc_out = self.graph_size[0] * channels[0]
+        fc_dim = nz * 4
+        self.fc = nn.Sequential(
+            nn.Linear(nz, fc_dim),
+            nn.ReLU(),
+            nn.Dropout(),
+            nn.Linear(fc_dim, fc_out),
+        ).to(device)
+
+        layers = []
+        for i in range(len(adjs)):
+            adj = adjs[i]
+            num_nodes = self.graph_size[i]
+            edge_index = BCGN.adj2edge(adj)
+            in_channels = channels[i]
+            out_channels = channels[i + 1]
+
+            layers.append(BCGN.FixBatchChebConv(in_channels=in_channels, out_channels=out_channels, K=6,
+                                                num_nodes=num_nodes, edge_index=edge_index, device=device))
+            layers.append(get_non_linearity(layer_type=nl))
+
+            if i < len(adjs) - 1:
+                up_matrix = up_matrixes[i]
+                layers.append(BCGN.ComaUpsample(up_matrix=up_matrix, device=device))
+            else:
+                layers.append(BCGN.FixBatchChebConv(in_channels=out_channels, out_channels=3, K=6, num_nodes=num_nodes,
+                                                    edge_index=edge_index, device=device))
+
+        self.conv = nn.Sequential(*layers).to(device)
+        # print(self.conv.state_dict().keys())
+        # print(self.fc.state_dict().keys())
+
+    def forward(self, x):
+        x = self.fc(x)
+        x = x.view(x.shape[0], self.graph_size[0], -1)
+        x = self.conv(x)
+        return x
 

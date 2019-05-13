@@ -144,12 +144,12 @@ class MeshVisualizer():
         obj_name = self.save_root + '{:03d}_{:05d}.obj'.format(epoch, batch)
         fig_name = self.save_root + '{:03d}_{:05d}_mesh.png'.format(epoch, batch)
 
-        self.vis_vertices(fig_name, vertices_real, vertices_fake)
-        objfile.write_obj(obj_name, vertices_fake, self.faces)
+        # self.vis_vertices(fig_name, vertices_real, vertices_fake)
+        # objfile.write_obj(obj_name, vertices_fake, self.faces)
 
         visual_list = []
         im = self.tensor2im(image)
-        visual_list.append(im)
+        # visual_list.append(im)
 
         joints_fake = torch.mm(self.joint_regressor.permute(1, 0), vertices_fake)[:14]
         mesh_2d = vertices_fake[:, :-1].numpy().astype(np.uint8)
@@ -161,7 +161,7 @@ class MeshVisualizer():
         mesh_2d = vertices_real[:, :-1].numpy().astype(np.uint8)
         joints_2d = joints_real[:, :-1].numpy().astype(np.uint8)
         im_lap_r = self.overlap(im.copy(), mesh_2d, joints_2d)
-        visual_list.append(im_lap_r)
+        # visual_list.append(im_lap_r)
 
         imwrite(img_name, np.concatenate(visual_list, axis=1))
 

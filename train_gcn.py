@@ -34,15 +34,15 @@ def TrainOptions(debug=False):
     parser.add_argument('--im_size', type=int, default=256)
     parser.add_argument('--vertex_num', type=int, default=6890, help='vertex number of template')
     parser.add_argument('--batch_size', type=int, default=batch_size)
-    parser.add_argument('--name', type=str, default='resnet_gcn_h36m')
+    parser.add_argument('--name', type=str, default='resnet_coma_h36m')
     parser.add_argument('--num_threads', default=num_threads, type=int, help='# sthreads for loading data')
 
     # model options
     parser.add_argument('--model', type=str, default='gcn', choices=['gcn'])
     parser.add_argument('--netE', type=str, default='resnet', choices=['resnet', 'vggnet', 'mobilenet'])
-    parser.add_argument('--netD', type=str, default='cheb-gcn', choices=['cheb-gcn', 'conv-up'])
+    parser.add_argument('--netD', type=str, default='coma-gcn', choices=['cheb-gcn', 'coma-gcn'])
     parser.add_argument('--nz', type=int, default=256, help='latent dims')
-    parser.add_argument('--level', type=int, default=8, help='level of decoder')
+    parser.add_argument('--level', type=int, default=4, help='level of decoder')
     parser.add_argument('--gcn_channels', type=list, default=None, help='the channels of gcn decoder')
     parser.add_argument('--ndown', type=int, default=6, help='downsample times')
     parser.add_argument('--nchannels', type=int, default=64, help='conv channels')
@@ -88,6 +88,21 @@ def TrainOptions(debug=False):
     return opt
 
 
+def get_parameters(opt):
+    if opt.netD == 'cheb-gcn':
+        para_file = './parameter/paras_{}.pkl'.format(opt.level)
+        with open(para_file, 'rb') as f:
+            paras = pickle.load(f)
+
+    elif opt.netD == 'coma-gcn':
+        para_file = './parameter/paras_coma_{}.pkl'.format(opt.level)
+        with open(para_file, 'rb') as f:
+            paras = pickle.load(f, encoding='latin1')
+    else:
+        raise NotImplementedError('Decoder model name [%s] is not recognized' % opt.netD)
+
+    return paras
+
 #
 # sys.path.append('{}/models'.format(project_root))
 # sys.path.append('{}/data_utils'.format(project_root))
@@ -104,16 +119,12 @@ if __name__ == '__main__':
 
     # load graph parameters
     if opt.gcn_channels == None:
-        opt.gcn_channels = [8 * 2 ** (i // 2) for i in range(opt.level + 2)][::-1]
-    para_file = './parameter/paras_{}.pkl'.format(opt.level)
-    with open(para_file, 'rb') as f:
-        para = pickle.load(f)
-        adjs = para['graphs'][::-1]
-        perm = para['perm']
-        perm_back = para['perm_back']
+        opt.gcn_channels = [8 * 2 ** (i // 1) for i in range(opt.level + 2)][::-1]
+
+    paras = get_parameters(opt)
 
     model = GCNModel()
-    model.initialize(opt, adjs, perm_back)
+    model.initialize(opt, paras)
     model.setup(opt)
 
     visualizer = vis.MeshVisualizer(opt)

@@ -10,7 +10,7 @@ template_path = '../parameter/template.obj'
 vertices, faces = objfile.read_obj(template_path)
 adj = BCGN.face2adj(faces, vertices.shape[0])
 A = scipy.sparse.csr_matrix(adj)
-level = 8
+level = 4
 channels = [8 * 2 ** (i//2) for i in range(level+2)]
 
 graphs, perm = coarsening.coarsen(A, levels=level, self_connections=True)

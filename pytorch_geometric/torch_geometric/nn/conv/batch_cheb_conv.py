@@ -24,6 +24,8 @@ class FixBatchChebConv(torch.nn.Module):
 
         if bias:
             self.bias = Parameter(torch.Tensor(out_channels))
+            # self.bias = Parameter(torch.Tensor(num_nodes, out_channels))
+
         else:
             self.register_parameter('bias', None)
 
@@ -102,6 +104,24 @@ class Upsample(torch.nn.Module):
         x = x.permute(0, 2, 1)          # from B* V * F to B * F * V
         x = self.up(x)                  # upsample
         x = x.permute(0, 2, 1)          # back to B * scale_factor*V * I
+        return x
+
+
+class ComaUpsample(torch.nn.Module):
+    def __init__(self, up_matrix, device=None):
+        super().__init__()
+        device = device if device is not None else torch.device('cpu')
+        self.device = device
+
+        tmp = up_matrix.tocoo()
+        self.index = torch.from_numpy(np.stack([tmp.row, tmp.col])).long().to(device)
+        self.value = torch.from_numpy(tmp.data).float().to(device)
+        self.shape = tmp.shape
+
+    def forward(self, x):
+        channels = x.shape[-1]
+        x = spmm(self.index, self.value, self.shape[0], x.permute(1, 0, 2).reshape(self.shape[1], -1))
+        x = x.reshape(self.shape[0], -1, channels).permute(1, 0, 2)
         return x
 
 

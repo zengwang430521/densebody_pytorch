@@ -13,20 +13,20 @@ class GCNModel(BaseModel):
     def modify_commandline_options(parser, is_train=True):
         return parser
 
-    def initialize(self, opt, adjs, perm_back):
+    def initialize(self, opt, paras):
         BaseModel.initialize(self, opt)
         self.loss_names = ['L1', 'TV']
         self.model_names = ['encoder', 'decoder']
 
-        self.encoder = networks.define_encoder(opt.im_size, opt.nz, opt.nchannels, netE=opt.netE, ndown=opt.ndown,
-                                               norm=opt.norm, nl=opt.nl, init_type=opt.init_type, device=self.device)
-
-        self.decoder = graph_networks.define_decoder(netD=opt.netD, adjs=adjs, perm_back=perm_back, vertex_num=opt.vertex_num,
+        self.decoder = graph_networks.define_decoder(netD=opt.netD, paras=paras,
                                                      channels=opt.gcn_channels, nz=opt.nz, norm=opt.norm, nl=opt.nl,
                                                      init_type=opt.init_type, device=self.device)
 
+        self.encoder = networks.define_encoder(opt.im_size, opt.nz, opt.nchannels, netE=opt.netE, ndown=opt.ndown,
+                                               norm=opt.norm, nl=opt.nl, init_type=opt.init_type, device=self.device)
+
         print(self.decoder.state_dict().keys())
-        params = list(self.decoder.named_parameters())
+        # params = list(self.decoder.named_parameters())
 
         if opt.phase == 'train':
             self.L1_loss = torch.nn.L1Loss()
@@ -53,7 +53,8 @@ class GCNModel(BaseModel):
         image = data['im_data']
         mesh_gt = data['mesh_data']
         mesh_re = self.decoder(self.encoder(image))
-        l1_loss = self.L1_loss(mesh_gt, mesh_re)
+        mesh_re = mesh_re * 255.0
+        l1_loss = self.L1_loss(mesh_gt / 255.0, mesh_re / 255.0)
         total_loss = l1_loss  # + self.opt.tv_weight * tv_loss
 
         self.optimizer_enc.zero_grad()
