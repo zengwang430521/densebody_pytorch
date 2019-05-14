@@ -53,7 +53,7 @@ class FixBatchChebConv(torch.nn.Module):
         lap = -deg[row] * edge_weight * deg[col]
 
         # sparse matrix multiplication is not compatible with multi-gpu, so we use dense mat mul
-
+        '''
         self.K = K
         self.edge_index = edge_index.to(device)
         self.num_nodes = num_nodes
@@ -65,7 +65,7 @@ class FixBatchChebConv(torch.nn.Module):
         self.num_nodes = num_nodes
         lap = torch.sparse_coo_tensor(edge_index, lap, torch.Size([num_nodes, num_nodes])).to_dense()
         self.lap = lap.to(device)
-        '''
+
 
     def reset_parameters(self):
         size = self.in_channels * self.weight.size(0)
@@ -87,10 +87,10 @@ class FixBatchChebConv(torch.nn.Module):
             # Tx_1 = spmm(edge_index, lap, num_nodes, x.permute(1, 0, 2).reshape(num_nodes, -1))
             # Tx_1 = Tx_1.reshape(num_nodes, -1, self.in_channels).permute(1, 0, 2)
 
-            Tx_1 = batch_spmm(edge_index, lap, num_nodes, x)
+            # Tx_1 = batch_spmm(edge_index, lap, num_nodes, x)
 
             # sparse matrix multiplication is not compatible with multi-gpu, so we use dense mat mul
-            # Tx_1 = torch.matmul(lap, x)
+            Tx_1 = torch.matmul(lap, x)
             out = out + torch.matmul(Tx_1, self.weight[1])
 
         for k in range(2, K):
@@ -100,10 +100,10 @@ class FixBatchChebConv(torch.nn.Module):
             # Tx_2 = 2 * spmm(edge_index, lap, num_nodes, Tx_1.permute(1, 0, 2).reshape(num_nodes, -1))
             # Tx_2 = Tx_2.reshape(num_nodes, -1, self.in_channels).permute(1, 0, 2) - Tx_0
 
-            Tx_2 = 2 * batch_spmm(edge_index, lap, num_nodes, Tx_1) - Tx_0
+            # Tx_2 = 2 * batch_spmm(edge_index, lap, num_nodes, Tx_1) - Tx_0
 
             # sparse matrix multiplication is not compatible with multi-gpu, so we use dense mat mul
-            # Tx_2 = 2 * torch.matmul(lap, Tx_1) - Tx_0
+            Tx_2 = 2 * torch.matmul(lap, Tx_1) - Tx_0
 
             out = out + torch.matmul(Tx_2, self.weight[k])
             Tx_0, Tx_1 = Tx_1, Tx_2
