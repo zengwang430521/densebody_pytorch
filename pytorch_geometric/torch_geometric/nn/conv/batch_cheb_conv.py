@@ -63,9 +63,9 @@ class FixBatchChebConv(torch.nn.Module):
         self.K = K
         self.num_nodes = num_nodes
         lap = torch.sparse_coo_tensor(edge_index, lap, torch.Size([num_nodes, num_nodes])).to_dense()
-        if device == torch.device('cuda'):
-            self.edge_index = edge_index.cuda()
-            self.lap = lap.cuda()
+        self.register_buffer('lap', lap)
+        self.edge_index = edge_index.to(device)
+
 
 
     def reset_parameters(self):
