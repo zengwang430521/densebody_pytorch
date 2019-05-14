@@ -52,20 +52,20 @@ class FixBatchChebConv(torch.nn.Module):
         deg[deg == float('inf')] = 0
         lap = -deg[row] * edge_weight * deg[col]
 
-        # sparse matrix multiplication is not compatible with multi-gpu, so we use dense mat mul
-        '''
+
         self.K = K
-        self.edge_index = edge_index.to(device)
         self.num_nodes = num_nodes
-        self.lap = lap.to(device)
+        self.register_buffer('lap', lap)
+        self.register_buffer('edge_index', edge_index)
 
         '''
+        # sparse matrix multiplication is not compatible with multi-gpu, so we use dense mat mul
         self.K = K
         self.num_nodes = num_nodes
         lap = torch.sparse_coo_tensor(edge_index, lap, torch.Size([num_nodes, num_nodes])).to_dense()
         self.register_buffer('lap', lap)
         self.edge_index = edge_index.to(device)
-
+        '''
 
 
     def reset_parameters(self):
@@ -85,26 +85,27 @@ class FixBatchChebConv(torch.nn.Module):
 
             # Tx_1 = spmm(edge_index, lap, num_nodes, x)
 
-            # Tx_1 = spmm(edge_index, lap, num_nodes, x.permute(1, 0, 2).reshape(num_nodes, -1))
-            # Tx_1 = Tx_1.reshape(num_nodes, -1, self.in_channels).permute(1, 0, 2)
+            Tx_1 = spmm(edge_index, lap, num_nodes, x.permute(1, 0, 2).reshape(num_nodes, -1))
+            Tx_1 = Tx_1.reshape(num_nodes, -1, self.in_channels).permute(1, 0, 2)
 
             # Tx_1 = batch_spmm(edge_index, lap, num_nodes, x)
 
             # sparse matrix multiplication is not compatible with multi-gpu, so we use dense mat mul
-            Tx_1 = torch.matmul(lap, x)
+            # Tx_1 = torch.matmul(lap, x)
+
             out = out + torch.matmul(Tx_1, self.weight[1])
 
         for k in range(2, K):
 
             # Tx_2 = 2 * spmm(edge_index, lap, num_nodes, Tx_1) - Tx_0
 
-            # Tx_2 = 2 * spmm(edge_index, lap, num_nodes, Tx_1.permute(1, 0, 2).reshape(num_nodes, -1))
-            # Tx_2 = Tx_2.reshape(num_nodes, -1, self.in_channels).permute(1, 0, 2) - Tx_0
+            Tx_2 = 2 * spmm(edge_index, lap, num_nodes, Tx_1.permute(1, 0, 2).reshape(num_nodes, -1))
+            Tx_2 = Tx_2.reshape(num_nodes, -1, self.in_channels).permute(1, 0, 2) - Tx_0
 
             # Tx_2 = 2 * batch_spmm(edge_index, lap, num_nodes, Tx_1) - Tx_0
 
             # sparse matrix multiplication is not compatible with multi-gpu, so we use dense mat mul
-            Tx_2 = 2 * torch.matmul(lap, Tx_1) - Tx_0
+            # Tx_2 = 2 * torch.matmul(lap, Tx_1) - Tx_0
 
             out = out + torch.matmul(Tx_2, self.weight[k])
             Tx_0, Tx_1 = Tx_1, Tx_2
@@ -142,9 +143,14 @@ class ComaUpsample(torch.nn.Module):
         self.device = device
 
         tmp = up_matrix.tocoo()
-        self.index = torch.from_numpy(np.stack([tmp.row, tmp.col])).long().to(device)
-        self.value = torch.from_numpy(tmp.data).float().to(device)
         self.shape = tmp.shape
+        # self.index = torch.from_numpy(np.stack([tmp.row, tmp.col])).long().to(device)
+        # self.value = torch.from_numpy(tmp.data).float().to(device)
+        self.register_buffer('index', torch.from_numpy(np.stack([tmp.row, tmp.col])).long())
+        self.register_buffer('value', torch.from_numpy(tmp.data).float())
+
+
+
 
     def forward(self, x):
         channels = x.shape[-1]
