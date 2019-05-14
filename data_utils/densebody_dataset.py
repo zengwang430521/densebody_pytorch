@@ -117,7 +117,8 @@ class DenseBodyDataset(Dataset):
                 if name.split('.')[-1].lower() in IMAGE_EXTENSIONS
             ]
         return image_names
-    
+
+    '''
     def __getitem__(self, id):
         out_dict = {}
         for k in self.itemlist:
@@ -127,8 +128,20 @@ class DenseBodyDataset(Dataset):
                 out_dict[k.replace('names','data')] = torch.stack(ims).to(self.device)
             else:
                 out_dict[k] = torch.from_numpy(items)
-        return out_dict    
-        
+        return out_dict
+    '''
+
+    def __getitem__(self, id):
+        out_dict = {}
+        for k in self.itemlist:
+            items = getattr(self, k)[id]
+            if k.endswith('names'):
+                ims = [self.transform(imread(item)) for item in items]
+                out_dict[k.replace('names','data')] = torch.stack(ims).to(self.device)
+            else:
+                out_dict[k] = torch.from_numpy(items)
+        return out_dict
+
     def __len__(self):
         return self.length
 

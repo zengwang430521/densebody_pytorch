@@ -7,7 +7,6 @@ import pickle
 import os
 from torchvision import transforms
 from PIL import Image
-from . import objfile
 # TODO: Change the global directory to where you normally hold the datasets.
 # I use both Windows PC and Linux Server for this project so I have two dirs.
 
@@ -121,6 +120,22 @@ class MeshDataset(Dataset):
             ]
         return image_names
 
+    def _load_obj_vertex(self, filepath):
+        vertices = []
+        for line in open(filepath, "r"):
+            if line.startswith('#'): continue
+            values = line.split()
+            if not values: continue
+            if values[0] == 'v':
+                # v = map(float, values[1:4])
+                v = [float(x) for x in values[1:4]]
+                vertices.append(v)
+
+        # vertices = np.array(vertices)
+        vertices = torch.FloatTensor(vertices)
+        return vertices
+
+    '''
     def __getitem__(self, id):
         out_dict = {}
         for k in self.itemlist:
@@ -129,12 +144,20 @@ class MeshDataset(Dataset):
                 ims = [self.transform(imread(item)) for item in items]
                 out_dict[k.replace('names', 'data')] = torch.stack(ims).to(self.device)
             elif k == 'mesh_names':
-                vertices = [torch.from_numpy(objfile.read_obj(item)[0]).float() for item in items]
+                vertices = [torch.from_numpy(objfile.read_obj(item)[0]) for item in items]
                 out_dict[k.replace('names', 'data')] = torch.stack(vertices).to(self.device)
 
             else:
                 out_dict[k] = torch.from_numpy(items)
         return out_dict
+    '''
+
+    def __getitem__(self, id):
+        image = self.transform(imread(self.im_names[id]))
+        vertex = self._load_obj_vertex(self.mesh_names[id])
+        gt2d = torch.from_numpy(self.gt2d[id])
+        gt3d = torch.from_numpy(self.gt3d[id])
+        return image, vertex, gt2d, gt3d
 
     def __len__(self):
         return self.length

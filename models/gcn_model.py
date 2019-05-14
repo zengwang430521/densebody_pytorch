@@ -1,4 +1,6 @@
 import torch
+import torch.nn as nn
+import torch.nn.parallel
 
 from .base_model import BaseModel
 from . import networks
@@ -17,7 +19,7 @@ class GCNModel(BaseModel):
         BaseModel.initialize(self, opt)
         self.loss_names = ['L1', 'TV']
         self.model_names = ['encoder', 'decoder']
-
+        self.ngpu = opt.ngpu
         self.decoder = graph_networks.define_decoder(netD=opt.netD, paras=paras,
                                                      channels=opt.gcn_channels, nz=opt.nz, norm=opt.norm, nl=opt.nl,
                                                      init_type=opt.init_type, device=self.device)
@@ -33,12 +35,10 @@ class GCNModel(BaseModel):
             # self.TV_loss = networks.TotalVariationLoss(opt.uv_prefix, self.device)
             self.encoder.train()
             self.decoder.train()
-
-            self.optimizers = []
             self.optimizer_enc = torch.optim.Adam(self.encoder.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999))
-            self.optimizers.append(self.optimizer_enc)
-
             self.optimizer_dec = torch.optim.Adam(self.decoder.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999))
+            self.optimizers = []
+            self.optimizers.append(self.optimizer_enc)
             self.optimizers.append(self.optimizer_dec)
 
         else:
@@ -50,9 +50,15 @@ class GCNModel(BaseModel):
     '''
 
     def train_one_batch(self, data):
-        image = data['im_data']
-        mesh_gt = data['mesh_data']
-        mesh_re = self.decoder(self.encoder(image))
+        image = data[0].to(self.device)
+        mesh_gt = data[1].to(self.device)
+
+        if image.is_cuda and self.ngpu > 1:
+            mesh_re = nn.parallel.data_parallel(self.encoder, image, range(self.ngpu))
+            mesh_re = nn.parallel.data_parallel(self.decoder, mesh_re, range(self.ngpu))
+        else:
+            mesh_re = self.decoder(self.encoder(image))
+
         mesh_re = mesh_re * 255.0
         l1_loss = self.L1_loss(mesh_gt / 255.0, mesh_re / 255.0)
         total_loss = l1_loss  # + self.opt.tv_weight * tv_loss

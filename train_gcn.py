@@ -12,7 +12,8 @@ from argparse import ArgumentParser
 from models.gcn_model import GCNModel
 import torch
 import pickle
-
+import time
+from torch.utils.data import DataLoader
 
 # default options
 def TrainOptions(debug=False):
@@ -52,6 +53,10 @@ def TrainOptions(debug=False):
                         choices=['xavier', 'normal', 'kaiming', 'orthogonal'])
 
     # training options
+    parser.add_argument('--cuda', action='store_true', help='enables cuda')
+    parser.add_argument('--ngpu', type=int, default=1, help='number of GPUs to use')
+    parser.add_argument('--workers', type=int, default=2, help='number of data loading workers')
+
     parser.add_argument('--phase', type=str, default='train', choices=['train', 'test'])
     parser.add_argument('--continue_train', action='store_true')
     parser.add_argument('--load_epoch', type=int, default=0)
@@ -130,25 +135,26 @@ if __name__ == '__main__':
     visualizer = vis.MeshVisualizer(opt)
     total_steps = 0
 
-    rand_perm = np.arange(batchs_per_epoch)
-
     # put something in txt file
     file_log = open(os.path.join(opt.checkpoints_dir, opt.name, 'log.txt'), 'w')
+
     for epoch in range(opt.load_epoch + 1, opt.niter + opt.niter_decay + 1):
-        # set loop information
+        data_loader = DataLoader(dataset, batch_size=opt.batch_size, shuffle=True, num_workers=int(opt.workers), pin_memory=True)
+        data_stream = tqdm(data_loader, ncols=120)
+        batch_len = data_loader.__len__()
         print('Epoch %d: start training' % epoch)
-        np.random.shuffle(rand_perm)
-        loop = tqdm(range(batchs_per_epoch), ncols=120)
         loss_metrics = 0
-        for i in loop:
-            data = dataset[rand_perm[i] * opt.batch_size: (rand_perm[i] + 1) * opt.batch_size]
+        i = 0
+        for data in data_stream:
+            i += 1
             loss_dict = model.train_one_batch(data)
             loss_metrics = loss_dict['total']
+
             # change tqdm info
-            tqdm_info = ''
+            tqdm_info = '%d/%d ' % (i, batch_len)
             for k, v in loss_dict.items():
                 tqdm_info += ' %s: %.6f' % (k, v)
-            loop.set_description(tqdm_info)
+            data_stream.set_description(tqdm_info)
 
             if (i + 1) % opt.save_result_freq == 0:
                 file_log.write('epoch {} iter {}: {}\n'.format(epoch, i, tqdm_info))
@@ -161,5 +167,53 @@ if __name__ == '__main__':
         if epoch > opt.niter:
             model.update_learning_rate(metrics=loss_metrics)
 
+    '''
+    rand_perm = np.arange(batchs_per_epoch)
+
+    for epoch in range(opt.load_epoch + 1, opt.niter + opt.niter_decay + 1):
+ 
+        # set loop information
+        print('Epoch %d: start training' % epoch)
+        np.random.shuffle(rand_perm)
+        loop = tqdm(range(batchs_per_epoch), ncols=120)
+        loss_metrics = 0
+        for i in loop:
+            start = time.time()
+
+            data = dataset[rand_perm[i] * opt.batch_size: (rand_perm[i] + 1) * opt.batch_size]
+
+            end = time.time()
+            time1 = end - start
+
+            torch.cuda.synchronize()
+            start = time.time()
+
+            loss_dict = model.train_one_batch(data)
+
+            torch.cuda.synchronize()
+            end = time.time()
+            time2 = end-start
+
+
+
+            loss_metrics = loss_dict['total']
+            # change tqdm info
+            tqdm_info = ''
+            for k, v in loss_dict.items():
+                tqdm_info += ' %s: %.6f' % (k, v)
+            tqdm_info += '  loading data:{}, train:{}'.format(time1, time2)
+            loop.set_description(tqdm_info)
+
+            if (i + 1) % opt.save_result_freq == 0:
+                file_log.write('epoch {} iter {}: {}\n'.format(epoch, i, tqdm_info))
+                file_log.flush()
+                visualizer.save_results(model.get_current_visuals(), epoch, i)
+
+        if epoch % opt.save_epoch_freq == 0:
+            model.save_networks(epoch)
+        print('Epoch %d training finished' % epoch)
+        if epoch > opt.niter:
+            model.update_learning_rate(metrics=loss_metrics)
+    '''
     file_log.close()
 
