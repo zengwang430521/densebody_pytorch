@@ -1,11 +1,14 @@
 import torch
 from torch.nn import Parameter
 from torch_sparse import spmm
-from torch_scatter import scatter_add
+from data_utils.batch_spmm import batch_spmm
 from torch_geometric.utils import remove_self_loops
 import numpy as np
 
 from ..inits import uniform
+
+from torch_scatter import scatter_add
+
 
 
 class FixBatchChebConv(torch.nn.Module):
@@ -48,11 +51,21 @@ class FixBatchChebConv(torch.nn.Module):
         deg = deg.pow(-0.5)
         deg[deg == float('inf')] = 0
         lap = -deg[row] * edge_weight * deg[col]
+
+        # sparse matrix multiplication is not compatible with multi-gpu, so we use dense mat mul
+
         self.K = K
-        self.lap = lap.to(device)
         self.edge_index = edge_index.to(device)
         self.num_nodes = num_nodes
+        self.lap = lap.to(device)
 
+        '''
+        self.K = K
+        self.edge_index = edge_index.to(device)
+        self.num_nodes = num_nodes
+        lap = torch.sparse_coo_tensor(edge_index, lap, torch.Size([num_nodes, num_nodes])).to_dense()
+        self.lap = lap.to(device)
+        '''
 
     def reset_parameters(self):
         size = self.in_channels * self.weight.size(0)
@@ -68,15 +81,29 @@ class FixBatchChebConv(torch.nn.Module):
         out = torch.matmul(Tx_0, self.weight[0])
 
         if K > 1:
+
             # Tx_1 = spmm(edge_index, lap, num_nodes, x)
-            Tx_1 = spmm(edge_index, lap, num_nodes, x.permute(1, 0, 2).reshape(num_nodes, -1))
-            Tx_1 = Tx_1.reshape(num_nodes, -1, self.in_channels).permute(1, 0, 2)
+
+            # Tx_1 = spmm(edge_index, lap, num_nodes, x.permute(1, 0, 2).reshape(num_nodes, -1))
+            # Tx_1 = Tx_1.reshape(num_nodes, -1, self.in_channels).permute(1, 0, 2)
+
+            Tx_1 = batch_spmm(edge_index, lap, num_nodes, x)
+
+            # sparse matrix multiplication is not compatible with multi-gpu, so we use dense mat mul
+            # Tx_1 = torch.matmul(lap, x)
             out = out + torch.matmul(Tx_1, self.weight[1])
 
         for k in range(2, K):
+
             # Tx_2 = 2 * spmm(edge_index, lap, num_nodes, Tx_1) - Tx_0
-            Tx_2 = 2 * spmm(edge_index, lap, num_nodes, Tx_1.permute(1, 0, 2).reshape(num_nodes, -1))
-            Tx_2 = Tx_2.reshape(num_nodes, -1, self.in_channels).permute(1, 0, 2) - Tx_0
+
+            # Tx_2 = 2 * spmm(edge_index, lap, num_nodes, Tx_1.permute(1, 0, 2).reshape(num_nodes, -1))
+            # Tx_2 = Tx_2.reshape(num_nodes, -1, self.in_channels).permute(1, 0, 2) - Tx_0
+
+            Tx_2 = 2 * batch_spmm(edge_index, lap, num_nodes, Tx_1) - Tx_0
+
+            # sparse matrix multiplication is not compatible with multi-gpu, so we use dense mat mul
+            # Tx_2 = 2 * torch.matmul(lap, Tx_1) - Tx_0
 
             out = out + torch.matmul(Tx_2, self.weight[k])
             Tx_0, Tx_1 = Tx_1, Tx_2

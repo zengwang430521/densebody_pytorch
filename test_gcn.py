@@ -7,6 +7,20 @@ from data_utils import coarsening
 from models import graph_networks
 
 
+
+
+a = torch.zeros(7,7)
+b = torch.zeros(2,7,3)
+c = torch.matmul(a,b)
+
+
+out = torch.ones(2, 4, 3)
+row = torch.LongTensor([1, 2, 4, 4])
+m = 8
+y = scatter_add(out, row, dim=1, dim_size=m)
+
+
+
 net = ChebConv(in_channels=3, out_channels=4, K=3)
 
 x = torch.rand([11, 3])
@@ -20,7 +34,6 @@ batch_net = BCGN.FixBatchChebConv(in_channels=3, out_channels=4, K=3, num_nodes=
 params = list(batch_net.named_parameters())
 
 print(batch_net.state_dict().keys())
-
 y = batch_net(x)
 
 template_path = './parameter/template.obj'
