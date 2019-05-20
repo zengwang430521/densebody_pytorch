@@ -149,9 +149,6 @@ class ComaUpsample(torch.nn.Module):
         self.register_buffer('index', torch.from_numpy(np.stack([tmp.row, tmp.col])).long())
         self.register_buffer('value', torch.from_numpy(tmp.data).float())
 
-
-
-
     def forward(self, x):
         channels = x.shape[-1]
         x = spmm(self.index, self.value, self.shape[0], x.permute(1, 0, 2).reshape(self.shape[1], -1))

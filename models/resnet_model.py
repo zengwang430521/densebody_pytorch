@@ -68,4 +68,7 @@ class ResNetModel(BaseModel):
         }
         if not self.opt.phase == 'in_the_wild':
             visuals['real_UV'] = self.real_UV[0]
-        return visuals 
+        return visuals
+
+    def forward(self, x):
+        return self.decoder(self.encoder(x))

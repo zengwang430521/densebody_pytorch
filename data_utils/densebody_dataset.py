@@ -74,9 +74,15 @@ class DenseBodyDataset(Dataset):
                 raise(FileNotFoundError('{} uv map not found, '.format(uv_map) + 
                     'please run "create_dataset.py" first'))
         
+            '''
             with open(self.im_root + '/' + annotation, 'rb') as f:
                 tmp = pickle.load(f)
-                
+            with open(self.im_root + '/' + 'pickle2_' + annotation,  'wb') as f:
+                pickle.dump(tmp,f,protocol=2)
+            '''
+            with open(self.im_root + '/' + 'pickle2_' + annotation, 'rb') as f:
+                tmp = pickle.load(f)
+
             # Prepare train/test split
             total_length = tmp['pose'].shape[0]
             split_point = int(train_test_split * total_length)

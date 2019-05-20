@@ -15,11 +15,9 @@ def TrainOptions(debug=False):
     
     # dataset options    
     # platform specific options
-    windows_root = 'D:/data' 
-    linux_root = '/home/wzeng/mydata/h3.6m'  # change to you dir
-    data_root = linux_root if platform == 'linux' else windows_root
-    num_threads = 4 if platform == 'linux' else 0
-    batch_size = 8 if platform == 'linux' else 4
+    data_root = '/home/wzeng/mydata/h3.6m'  # change to you dir
+    num_threads = 4
+    batch_size = 8
     folder_name = 'images'
     
     parser.add_argument('--data_root', type=str, default=data_root)

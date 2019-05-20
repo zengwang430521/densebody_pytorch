@@ -16,6 +16,7 @@ class SMPLModel(Module):
 
     with open(model_path, 'rb') as f:
       params = pickle.load(f)
+
     #print(params['J_regressor'].nonzero())
     self.J_regressor = torch.from_numpy(
       np.array(params['J_regressor'].todense())
@@ -24,6 +25,11 @@ class SMPLModel(Module):
     self.joint_regressor = torch.from_numpy(
       np.array(params['joint_regressor'].T.todense())
     ).type(self.data_type).to(device)
+
+    '''
+    coco_regressor = self.joint_regressor.numpy()
+    np.save('coco_regressor.npy', coco_regressor)
+    '''
     self.weights = torch.from_numpy(params['weights']).type(self.data_type).to(device)
     self.posedirs = torch.from_numpy(params['posedirs']).type(self.data_type).to(device)
     self.v_template = torch.from_numpy(params['v_template']).type(self.data_type).to(device)

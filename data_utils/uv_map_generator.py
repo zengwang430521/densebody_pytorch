@@ -12,6 +12,8 @@ from skimage.draw import polygon_perimeter as pope
 from time import time
 from tqdm import tqdm
 from numpy.linalg import solve
+
+
 from scipy.interpolate import RectBivariateSpline as RBS
 
 '''
@@ -20,18 +22,19 @@ from scipy.interpolate import RectBivariateSpline as RBS
 '''
 class UV_Map_Generator():
     def __init__(self, UV_height, UV_width=-1, 
+
         UV_pickle='radvani_template.pickle'):
         self.h = UV_height
         self.w = self.h if UV_width < 0 else UV_width
-        
-        ### Load UV texcoords and face mapping info
+        # Load UV texcoords and face mapping info
         if not os.path.isfile(UV_pickle):
             self._parse_obj(
-                UV_pickle.replace('pickle','obj'), UV_pickle
+                UV_pickle.replace('pickle', 'obj'), UV_pickle
             )
         else:
             with open(UV_pickle, 'rb') as f:
                 tmp = pickle.load(f)
+
             for k in tmp.keys():
                 setattr(self, k, tmp[k])
         
@@ -45,6 +48,7 @@ class UV_Map_Generator():
                 self.bary_id = bary_info['face_id']
                 self.bary_weights = bary_info['bary_weights']
                 self.edge_dict = bary_info['edge_dict']
+
                 
         else:
             print('Bary info cache not found, start calculating...' 

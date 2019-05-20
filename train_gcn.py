@@ -2,7 +2,6 @@ from data_utils.densebody_dataset import DenseBodyDataset
 from data_utils.mesh_dataset import MeshDataset
 from data_utils import visualizer as vis
 from models import create_model
-from torch.utils.data import DataLoader
 import sys
 from sys import platform
 import os
@@ -48,7 +47,7 @@ def TrainOptions(debug=False):
     parser.add_argument('--ndown', type=int, default=6, help='downsample times')
     parser.add_argument('--nchannels', type=int, default=64, help='conv channels')
     parser.add_argument('--norm', type=str, default='batch', choices=['batch', 'instance', 'none'])
-    parser.add_argument('--nl', type=str, default='relu', choices=['relu', 'lrelu', 'elu'])
+    parser.add_argument('--nl', type=str, default='lrelu', choices=['relu', 'lrelu', 'elu'])
     parser.add_argument('--init_type', type=str, default='xavier',
                         choices=['xavier', 'normal', 'kaiming', 'orthogonal'])
 
@@ -124,6 +123,7 @@ if __name__ == '__main__':
 
     # load graph parameters
     if opt.gcn_channels == None:
+        # opt.gcn_channels = [min(8 * 2 ** (i // 1), 64) for i in range(opt.level + 2)][::-1]
         opt.gcn_channels = [8 * 2 ** (i // 1) for i in range(opt.level + 2)][::-1]
 
     paras = get_parameters(opt)
@@ -146,6 +146,9 @@ if __name__ == '__main__':
         loss_metrics = 0
         i = 0
         for data in data_stream:
+            # give up the last batch for BN layers
+            if len(data) < opt.batch_size:
+                continue
             i += 1
             loss_dict = model.train_one_batch(data)
             loss_metrics = loss_dict['total']
