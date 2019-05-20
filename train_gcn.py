@@ -123,8 +123,8 @@ if __name__ == '__main__':
 
     # load graph parameters
     if opt.gcn_channels == None:
-        # opt.gcn_channels = [min(8 * 2 ** (i // 1), 64) for i in range(opt.level + 2)][::-1]
-        opt.gcn_channels = [8 * 2 ** (i // 1) for i in range(opt.level + 2)][::-1]
+        opt.gcn_channels = [min(16 * 2 ** (i // 1), 64) for i in range(opt.level + 2)][::-1]
+        # opt.gcn_channels = [8 * 2 ** (i // 1) for i in range(opt.level + 2)][::-1]
 
     paras = get_parameters(opt)
 
