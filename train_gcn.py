@@ -147,7 +147,7 @@ if __name__ == '__main__':
         i = 0
         for data in data_stream:
             # give up the last batch for BN layers
-            if len(data) < opt.batch_size:
+            if len(data[0]) < opt.batch_size:
                 continue
             i += 1
             loss_dict = model.train_one_batch(data)
